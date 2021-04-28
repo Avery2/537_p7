@@ -2,3 +2,6 @@
 *.cgi
 client
 server
+tester
+tests
+*.swp
