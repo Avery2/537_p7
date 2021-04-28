@@ -5,3 +5,5 @@ server
 tester
 tests
 *.swp
+tests-out
+stat_process
