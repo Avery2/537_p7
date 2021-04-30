@@ -8,3 +8,4 @@ tests
 tests-out
 stat_process
 multi-thread
+.__afs*
