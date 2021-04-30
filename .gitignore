@@ -7,3 +7,4 @@ tests
 *.swp
 tests-out
 stat_process
+multi-thread
