@@ -11,6 +11,22 @@
 // Most of the work is done within routines written in request.c
 //
 
+int fill_ptr = 0;
+int use_ptr = 0;
+int count = 0;
+
+static void *
+worker_func(void *arg) {
+    printf("Hello from worker %lu\n", pthread_self());
+        // NOTE: on different platforms, pthread_self()
+        // might return different things. I know that on
+        // Macintosh it returns a pointer to a structure
+        // describing the thread. On UNIX it returns a
+        // long unsigned int.
+
+    return NULL;
+}
+
 // CS537: Parse the new arguments too
 void getargs(int *port, int *threads, int *buffers, char** shm_name, int argc, char *argv[])
 {
@@ -24,6 +40,18 @@ void getargs(int *port, int *threads, int *buffers, char** shm_name, int argc, c
   *shm_name = argv[4];
 }
 
+void put (int value, int buffer[], int max) {
+	buffer[fill_ptr] = value;
+	fill_ptr = (fill_ptr + 1) % max;
+	count++;
+}
+
+int get(int buffer[], int max) {
+	int tmp = buffer[use_ptr];
+	use_ptr = (use_ptr + 1) % max;
+	count--;
+	return tmp;
+}
 
 int main(int argc, char *argv[])
 {
@@ -45,6 +73,12 @@ int main(int argc, char *argv[])
   // 
   // CS537 (Part A): Create some threads...
   //
+  pthread_t workers[threads];
+  for (int i = 0; i < threads; ++i) {
+      pthread_create(&workers[i], NULL, worker_func, NULL);
+  }
+  // create buffer
+  int my_buffer[buffers];
 
   listenfd = Open_listenfd(port);
   while (1) {
@@ -56,7 +90,11 @@ int main(int argc, char *argv[])
     // Save the relevant info in a buffer and have one of the worker threads 
     // do the work. Also let the worker thread close the connection.
     // 
-    requestHandle(connfd);
-    Close(connfd);
+
+	//my_buffer[fill_ptr] = connfd;
+	int old_fill_ptr = fill_ptr;
+	put(connfd, my_buffer, buffers);
+    requestHandle(my_buffer[old_fill_ptr]);
+    Close(my_buffer[old_fill_ptr]);
   }
 }
