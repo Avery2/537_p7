@@ -1,6 +1,10 @@
 #include "helper.h"
 #include "request.h"
 #include <pthread.h>
+#include <sys/mman.h>
+#include <sys/stat.h> /* For mode constants */
+#include <fcntl.h>    /* For O_* constants */
+#include <unistd.h> // ftruncate
 
 // 
 // server.c: A very, very simple web server
@@ -49,7 +53,6 @@ worker_func(void *arg) {
       int tmp = get();
       pthread_cond_signal(&empty);
       pthread_mutex_unlock(&mutex);
-      // printf("%d\n", tmp);
       requestHandle(tmp);
       Close(tmp);
     }
@@ -103,6 +106,17 @@ int main(int argc, char *argv[])
   for (int i = 0; i < threads; ++i) {
       pthread_create(&workers[i], NULL, worker_func, NULL);
   }
+
+  // create shared memory
+  int shm_fd = shm_open(shm_name, O_RDWR | O_CREAT, 0660);
+  if (shm_fd == -1)
+    exit(1);
+
+  int pg_sz = sysconf(_SC_PAGE_SIZE);
+
+  int ret = ftruncate(shm_fd, pg_sz);
+  if (ret == -1)
+    exit(1);
 
   listenfd = Open_listenfd(port);
   while (1) {
