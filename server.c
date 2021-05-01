@@ -1,5 +1,6 @@
 #include "helper.h"
 #include "request.h"
+#include <pthread.h>
 
 // 
 // server.c: A very, very simple web server
@@ -14,16 +15,44 @@
 int fill_ptr = 0;
 int use_ptr = 0;
 int count = 0;
+int buffers = -1;
+// int *the_buffer = NULL;
+// int *my_buffer = NULL;
+int my_buffer[256];
+pthread_cond_t empty, fill;
+pthread_mutex_t mutex;
+// pthread_cond_init
+// pthread_mutex_init
+
+void put(int value)
+{
+  my_buffer[fill_ptr] = value;
+  fill_ptr = (fill_ptr + 1) % buffers;
+  count++;
+}
+
+int get()
+{
+  int tmp = my_buffer[use_ptr];
+  use_ptr = (use_ptr + 1) % buffers;
+	count--;
+	return tmp;
+}
 
 static void *
 worker_func(void *arg) {
-    printf("Hello from worker %lu\n", pthread_self());
-        // NOTE: on different platforms, pthread_self()
-        // might return different things. I know that on
-        // Macintosh it returns a pointer to a structure
-        // describing the thread. On UNIX it returns a
-        // long unsigned int.
-
+    for (;;)
+    {
+      pthread_mutex_lock(&mutex);
+      while (count == 0)
+        pthread_cond_wait(&fill, &mutex);
+      int tmp = get();
+      pthread_cond_signal(&empty);
+      pthread_mutex_unlock(&mutex);
+      // printf("%d\n", tmp);
+      requestHandle(tmp);
+      Close(tmp);
+    }
     return NULL;
 }
 
@@ -40,31 +69,18 @@ void getargs(int *port, int *threads, int *buffers, char** shm_name, int argc, c
   *shm_name = argv[4];
 }
 
-void put (int value, int buffer[], int max) {
-	buffer[fill_ptr] = value;
-	fill_ptr = (fill_ptr + 1) % max;
-	count++;
-}
-
-int get(int buffer[], int max) {
-	int tmp = buffer[use_ptr];
-	use_ptr = (use_ptr + 1) % max;
-	count--;
-	return tmp;
-}
-
 int main(int argc, char *argv[])
 {
   int listenfd, connfd, port, clientlen;
   struct sockaddr_in clientaddr;
   // new cl args
-  int threads, buffers;
+  int threads;
   char* shm_name;
 
   getargs(&port, &threads, &buffers, &shm_name, argc, argv);
   // test values for threads and buffer are positve integers
-  if (threads < 0 || buffers < 0 || port < 22)
-	  exit(1);
+  if (threads <= 0 || buffers <= 0 || port < 2000)
+	  exit(0);
 
   //
   // CS537 (Part B): Create & initialize the shared memory region...
@@ -73,12 +89,20 @@ int main(int argc, char *argv[])
   // 
   // CS537 (Part A): Create some threads...
   //
+
+  // create buffer
+  // int temp_buffer[buffers];
+  // my_buffer = temp_buffer;
+
+  // init cv
+  pthread_cond_init(&empty, NULL);
+  pthread_cond_init(&fill, NULL);
+  pthread_mutex_init(&mutex, NULL);
+
   pthread_t workers[threads];
   for (int i = 0; i < threads; ++i) {
       pthread_create(&workers[i], NULL, worker_func, NULL);
   }
-  // create buffer
-  int my_buffer[buffers];
 
   listenfd = Open_listenfd(port);
   while (1) {
@@ -91,10 +115,11 @@ int main(int argc, char *argv[])
     // do the work. Also let the worker thread close the connection.
     // 
 
-	//my_buffer[fill_ptr] = connfd;
-	int old_fill_ptr = fill_ptr;
-	put(connfd, my_buffer, buffers);
-    requestHandle(my_buffer[old_fill_ptr]);
-    Close(my_buffer[old_fill_ptr]);
+  pthread_mutex_lock(&mutex);
+  while (count == buffers)
+    pthread_cond_wait(&empty, &mutex);
+  put(connfd);
+  pthread_cond_signal(&fill);
+  pthread_mutex_unlock(&mutex);
   }
 }
