@@ -43,11 +43,12 @@ int main(int argc, char *argv[])
 		fprintf(stdout, "\n%d\n", i);
 		for (int j = 0; j < num_threads; ++j)
 		{
+		    //fprintf(stdout, "\n%d\n", i);
 			fprintf(stdout, "%ul : %u %u %u\n",
-					(shm_slot_ptr[i]).pt_id,
-					(shm_slot_ptr[i]).num_static + (shm_slot_ptr[i]).num_dynamic,
-					(shm_slot_ptr[i]).num_static,
-					(shm_slot_ptr[i]).num_dynamic);
+					(unsigned int) (shm_slot_ptr[j]).pt_id,
+					(shm_slot_ptr[j]).num_static + (shm_slot_ptr[j]).num_dynamic,
+					(shm_slot_ptr[j]).num_static,
+					(shm_slot_ptr[j]).num_dynamic);
 		}
 		i++;
 		// sleep
