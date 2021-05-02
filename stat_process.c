@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 		{
 			fprintf(stdout, "%ul : %u %u %u\n",
 					(shm_slot_ptr[i]).pt_id,
-					(shm_slot_ptr[i]).num_static + (shm_slot_ptr[i]).num_dynamic),
+					(shm_slot_ptr[i]).num_static + (shm_slot_ptr[i]).num_dynamic,
 					(shm_slot_ptr[i]).num_static,
 					(shm_slot_ptr[i]).num_dynamic);
 		}
